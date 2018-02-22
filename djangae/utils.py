@@ -105,14 +105,14 @@ def retry(func, *args, **kwargs):
     retries = kwargs.pop('_retries', 3)
     i = 0
     try:
-        timeout_ms = 100
+        timeout_ms = kwargs.pop('_initial_wait', 375)  # Try 375, 750, 1500
         while True:
             try:
                 i += 1
                 return func(*args, **kwargs)
             except (datastore_errors.Error, apiproxy_errors.Error, TransactionFailedError) as exc:
                 logger.info("Retrying function: %s(%s, %s) - %s", str(func), str(args), str(kwargs), str(exc))
-                time.sleep(timeout_ms / 1000000.0)
+                time.sleep(timeout_ms * 0.001)
                 timeout_ms *= 2
                 if i > retries:
                     raise exc

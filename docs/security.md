@@ -24,3 +24,8 @@ This middleware applies the patches and then raises `django.core.exceptions.Midd
 Use the `dumpurls` management command to generate a report listing all the configured URL patterns in your project.
 
 For each pattern, the report shows the regular expression for the full path, the Python dotted module name for the view that handles requests, and the names of decorators that may have been applied to the view.
+
+# CSRF session check
+
+The built in Djangae checks enforce the use of session-based (rather than cookie-based) CSRF tokens. To satisfy this check
+either the `CSRF_USE_SESSIONS` setting must be True, or Mozilla's `session-csrf` app must be installed and configured.

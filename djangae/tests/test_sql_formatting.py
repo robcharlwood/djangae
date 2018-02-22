@@ -1,8 +1,11 @@
+# -*- coding: utf8 -*-
 from django.db import connections, models
 
 from djangae.test import TestCase
 
-from djangae.db.backends.appengine.formatting import generate_sql_representation
+from djangae.db.backends.appengine.formatting import (
+    _generate_values_expression, generate_sql_representation
+)
 from djangae.db.backends.appengine.commands import (
     SelectCommand, InsertCommand, DeleteCommand, UpdateCommand
 )
@@ -194,3 +197,16 @@ class UnrecognisedQueryTypeErrorTest(TestCase):
 
         with self.assertRaises(NotImplementedError):
             generate_sql_representation(Command())
+
+
+class GenerateValuesExpressionTest(TestCase):
+    """Tests for `djangae.db.backends.appengine.formatting._generate_values_expression`."""
+
+    def test_unicode_error(self):
+        """Test that _generate_values_expression does not raise a unicode error."""
+        class Mock(object):
+            value1 = u'ûnīçøde hërę'
+
+        m = Mock()
+        output = _generate_values_expression([m], ['value1'])
+        self.assertEqual(output, '("' + m.value1 + '")')

@@ -7,3 +7,5 @@ You cannot run a management command to clear django sessions on appengine, djang
     - description: clear sessions
       url: /_ah/clearsessions
       schedule: every 24 hours
+
+The clearsessions view is restricted to tasks and admins only

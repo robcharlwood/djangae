@@ -12,8 +12,12 @@
 - Improve the approx SQL representation of Datastore commands (update, delete etc.)
 - Default value for failure_behaviour in `process_task_queues` is now `RAISE_ERROR`. Tasks will no longer fail silently when processed using this method in unit tests.
 - Add djangae.compat to handle SDK structural changes
+- Added custom `FileField` and `ImageField` which accept an optional `url_field` argument to allow you to specify the name of another field on the model on which the URL to the file or image is cached.
 - Add a ComputedNullBooleanField
 - Updated the `sleuth` library in djangae.contrib
+- Updated the csrf session check to respect Django's `CSRF_USE_SESSIONS` flag
+- `djangae.utils.retry` now waits for 375ms by default before retrying to avoid excerbating contention (previous value of 100ms was far too low).
+- `djangae.utils.retry` now accepts overriding the initial retry time with the `_initial_wait` kwarg.
 
 ### Bug fixes:
 
@@ -27,10 +31,17 @@
  - Create .editorconfig to ensure basic editor settings are consistent between users
  - Fix import error in SDK 1.9.60
  - Add .flake8 file to move towards enforcement code standard
+ - Previously `instance.relatedlistfield.all()[0]` would retrieve all items before indexing, now it only grabs the first
+ - Fixed `instance.relatedlistfield.values_list(...)` which would die with an error in 0.9.10 and earlier
  - Add missing `djangae/fields/allkeys-5.2.0.zip` file to `MANIFEST.in`
  - It was possible a `TypeError` would throw when calculating the ComputedCollationField value if the source value was unicode
  - Make `value_from_datadict` in `forms.fields.ListWidget` return None when the value provided is None as the existing comment describes. This prevents an exception when `save()` is called on a `ListWidget` whose value is `None`.
  - Fixed test to remove dependency on mock
+ - Use '' as default namespace for memcache keys, instead of None.
+ - Set a default app_id (`managepy`) so you can use use gcloud compatible app.yaml files (which cannot contain an app_id).  Override with --app_id
+ - Restricted access to the `clearsessions` view to tasks and admins only
+ - Fixed the `sleep()` time in `djangae.utils.retry` which was sleeping in `ns` rather than `ms`
+ - Fix unicode error when creating a SQL representation
 
 ## v0.9.10
 

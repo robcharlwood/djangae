@@ -1,5 +1,5 @@
 import os
-
+from django import VERSION
 from django.conf import settings
 from django.core.checks import register, Tags, Error, Warning
 
@@ -27,6 +27,11 @@ CSP_SOURCE_NAMES = [
 @register(Tags.security)
 def check_session_csrf_enabled(app_configs=None, **kwargs):
     errors = []
+
+    # Django 1.11 has built-in session-based CSRF tokens, so if that's enabled
+    # we don't need to check for the mozilla version
+    if VERSION > (1, 11) and getattr(settings, "CSRF_USE_SESSIONS", False):
+        return []
 
     # Django >= 1.10 has a MIDDLEWARE setting, which is None by default. Convert
     # it to a list, it might be a tuple.

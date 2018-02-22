@@ -241,6 +241,14 @@ Computed fields are:
 * `ComputedNullBooleanField`
 
 
+## FileField & ImageField
+
+Djangae provides custom versions of Django's `FileField` and `ImageField`, which provide the normal behaviour but additionally accept an optional `url_field` argument to allow you to specify the name of another field on the model on which the URL to the file or image is cached.
+
+If you're using the Cloud Storage or Blobstore storage backend, then this caching of the URL allows you to avoid the underlying call to App Engine's `get_serving_url` function each time you access the URL, as that can cause significant slowness.
+
+The cached URL value in your specified field is updated each time the file/image is created or modified.
+
 ## Example Usages
 
 
@@ -248,6 +256,12 @@ Computed fields are:
 from django.db import models
 from djangae import fields
 
+
+class Kitten(models.Model):
+    image = fields.ImageField(url_field="image_url")
+    image_url = fields.CharField()
+    
+    
 class KittenSanctuary(models.Model):
 
     is_best = fields.TrueOrNullField(unique=True)

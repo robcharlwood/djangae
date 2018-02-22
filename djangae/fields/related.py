@@ -13,6 +13,15 @@ from djangae.forms.fields import (
     GenericRelationFormfield,
     OrderedModelMultipleChoiceField,
 )
+
+
+try:
+    from django.db.models.query import FlatValuesListIterable
+except ImportError:
+    # Django 1.8 only
+    from django.db.models.query import ValuesListQuerySet
+
+
 from django.utils import six
 import django
 
@@ -59,10 +68,92 @@ class OrderedQuerySet(QuerySet):
             Fetch all uses the standard iterator but sorts the values on the
             way out, this maintains the lazy evaluation of querysets
         """
+
+        def locate_pk_column(query):
+            pk_name = self.model._meta.pk.name
+            if django.VERSION >= (1, 9):
+                if "pk" in query.values_select:
+                    return query.values_select.index("pk")
+                elif pk_name in query.values_select:
+                    return query.values_select.index(pk_name)
+            else:
+                for i, col in enumerate(query.select):
+                    if hasattr(col, "field") and col.field.name == pk_name:
+                        return i
+
         if self._result_cache is None:
-            results = list(self.iterator())
+            # Making this work efficiently is tricky. We never want to fetch more than self.ordered_pks
+            # and the __getitem__ implementation sets this to a single item, so in that case we only want
+            # to fetch one. So we do a few things here:
+
+            # 1. We clone the Queryset as a normal Queryset, then we do a pk__in on the ordered_pks.
+            # 2. We add the primary key if this was a values_list query without it being specified, otherwise
+            #    we can't match up the ordering
+            # 3. We execute the clone, and then remove the additional PK column from the result set
+
+            # There are various combinations to handle depending on whether it's a "flat" values_list or
+            # whether or not we added the PK manually to the result set
+
+
+            if django.VERSION >= (1, 9):
+                clone = QuerySet(model=self.model, query=self.query, using=self._db)
+                clone._iterable_class = self._iterable_class
+            else:
+                if isinstance(self, ValuesListQuerySet):
+                    clone = ValuesListQuerySet(model=self.model, query=self.query, using=self._db)
+                    clone._fields = self._fields
+                    clone.field_names = self.field_names
+                    clone.extra_names = self.extra_names
+                    clone.annotation_names = self.annotation_names
+                    clone.flat = self.flat
+                else:
+                    clone = QuerySet(model=self.model, query=self.query, using=self._db)
+
+            clone = clone.filter(pk__in=self.ordered_pks)
+
+            pk_col = 0
+            pk_added = False
+
+            if django.VERSION >= (1, 9):
+                values_select = clone.query.values_select
+            else:
+                values_select = [x.field.name for x in clone.query.select]
+
+            if values_select:
+                pk_col = locate_pk_column(clone.query)
+                if pk_col is None:
+                    # Manually add the PK to the result set
+                    clone = clone.values_list(*(["pk"] + values_select))
+                    values_select = [x.field.name for x in clone.query.select]
+                    pk_col = 0
+                    pk_added = True
+
+            # Hit the database
+            results = list(clone)
+
             ordered_results = []
-            pk_hash = {x.pk: x for x in results}
+            pk_hash = {}
+
+            if django.VERSION >= (1, 9):
+                flat = self._iterable_class == FlatValuesListIterable
+            else:
+                # On Django 1.8 things are different
+                flat = getattr(self, "flat", False)
+
+            for x in results:
+                if isinstance(x, models.Model):
+                    # standard query case
+                    pk_hash[x.pk] = x
+                elif len(values_select) == 1:
+                    # Only PK case
+                    pk_hash[x if flat else x[pk_col]] = x
+                else:
+                    # Multiple columns (either passed in, or as a result of the PK being added)
+                    if flat:
+                        pk_hash[x[pk_col]] = x[1] if pk_added else x
+                    else:
+                        pk_hash[x[pk_col]] = x[1:] if pk_added else x
+
             for pk in self.ordered_pks:
                 obj = pk_hash.get(pk)
                 if obj:

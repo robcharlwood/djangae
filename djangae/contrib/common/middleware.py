@@ -1,7 +1,12 @@
 from djangae.contrib.common import _thread_locals
 
+try:
+    from django.utils.deprecation import MiddlewareMixin
+except ImportError:
+    MiddlewareMixin = object
 
-class RequestStorageMiddleware:
+
+class RequestStorageMiddleware(MiddlewareMixin):
     """ Middleware which allows us to get hold of the request object in places where Django doesn't give it to us, e.g. in model save methods.
         Use get_request() to access the request object.
     """

@@ -39,7 +39,7 @@ def _generate_values_expression(instances, columns):
             needs_quoting = isinstance(value, six.string_types)
 
             if needs_quoting:
-                row.append('"%s"' % value)
+                row.append('"{}"'.format(value))
             else:
                 row.append(six.text_type(value))
 
@@ -170,5 +170,3 @@ def generate_sql_representation(command):
         return _generate_update_sql(command, representation)
 
     raise NotImplementedError("Unrecognized query type")
-
-    

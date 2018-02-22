@@ -1,6 +1,7 @@
 from djangae.forms.fields import TrueOrNullFormField
 from django.utils.translation import ugettext_lazy as _
 
+from .files import *
 from .iterable import *
 from .related import *
 from .computed import *

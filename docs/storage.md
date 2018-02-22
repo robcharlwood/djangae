@@ -6,7 +6,7 @@ If you've imported `djangae.settings_base.*`, then the default backend is `djang
 
 ## Cloud Storage
 
-`djangae.storage.CloudStorage` is a  django storage backend that works with Google Cloud Storage, you can treat it just as
+`djangae.storage.CloudStorage` is a  django storage backend that works with Google Cloud Storage, you can treat it just
 as you would with other storage backends. Google Cloud storage is a general purpose storage backend.
 
 To use this you need to [install the `GoogleAppEngineCloudStorageClient` library](https://cloud.google.com/appengine/docs/python/googlecloudstorageclient/using-cloud-storage#downloading_the_client_library).

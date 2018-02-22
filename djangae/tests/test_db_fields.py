@@ -10,6 +10,7 @@ from django.db import models
 from django.db.utils import IntegrityError
 from django.conf import settings
 from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.core.files.base import ContentFile
 from django.core.validators import EmailValidator
 import django
 
@@ -23,7 +24,9 @@ from djangae.fields import (
     ComputedIntegerField,
     ComputedPositiveIntegerField,
     ComputedTextField,
+    FileField,
     GenericRelationField,
+    ImageField,
     JSONField,
     ListField,
     RelatedSetField,
@@ -51,6 +54,14 @@ class ComputedFieldModel(models.Model):
 
     class Meta:
         app_label = "djangae"
+
+
+class FileFieldModel(models.Model):
+
+    file_field = FileField(blank=True, null=True, url_field="file_url_field")
+    image_field = ImageField(blank=True, null=True, url_field="image_url_field")
+    file_url_field = CharField(blank=True)
+    image_url_field = CharField(blank=True)
 
 
 class ComputedFieldTests(TestCase):
@@ -745,6 +756,35 @@ class RelatedIterableFieldTests(TestCase):
 
 class RelatedListFieldModelTests(TestCase):
 
+    def test_values_list_queries_work(self):
+        a, b = ISOther.objects.create(name="A"), ISOther.objects.create(name="B")
+        thing = ISModel.objects.create(related_list_ids=[a.pk, b.pk])
+
+        result = list(thing.related_list.values_list("pk"))
+        self.assertEqual(result, [(a.pk,), (b.pk,)])
+
+        result = list(thing.related_list.values_list("pk", flat=True))
+        self.assertEqual(result, [a.pk, b.pk])
+
+        result = list(thing.related_list.values_list("name", flat=True))
+        self.assertEqual(result, ["A", "B"])
+
+        result = list(thing.related_list.values_list("name"))
+        self.assertEqual(result, [("A",), ("B",)])
+
+        result = list(thing.related_list.values_list("pk", "name"))
+        self.assertEqual(result, [(a.pk, "A"), (b.pk, "B")])
+
+    def test_indexing_doesnt_over_fetch(self):
+        a, b = ISOther.objects.create(), ISOther.objects.create()
+        thing = ISModel.objects.create(related_list_ids=[a.pk, b.pk])
+
+        with sleuth.watch('djangae.db.backends.appengine.meta_queries.QueryByKeys.__init__') as get:
+            ret = thing.related_list.all()[0]
+
+            self.assertEqual(1, get.call_count)
+            self.assertEqual(1, len(get.calls[0].args[2]))
+
     def test_can_update_related_field_from_form(self):
         related = ISOther.objects.create()
         thing = ISModel.objects.create(related_list=[related])
@@ -1432,6 +1472,39 @@ class PickleTests(TestCase):
                 pickle.dumps(field)
             except (pickle.PicklingError, TypeError) as e:
                 self.fail("Could not pickle %r: %s" % (field, e))
+
+
+class FileFieldTests(TestCase):
+
+    def test_url_field_is_populated(self):
+        """ When the `url_field` attribute is passed to the file/image field, that field should be
+            populated when the object is saved.
+        """
+        obj = FileFieldModel.objects.create(
+            file_field=ContentFile('file content', name='my_file'),
+            image_field=ContentFile('image content', name='my_file'),
+        )
+        self.assertTrue(obj.file_url_field)
+        self.assertTrue(obj.image_url_field)
+
+    def test_get_serving_url_only_called_when_file_modified(self):
+        """ App Engine's `get_serving_url` function should only be called when the file is created
+            or modified, not on every save.
+        """
+        with sleuth.watch("djangae.storage.get_serving_url") as get_serving_url_watcher:
+            obj = FileFieldModel.objects.create(
+                file_field=ContentFile('file content', name='my_file'),
+                image_field=ContentFile('image content', name='my_file'),
+            )
+            self.assertEqual(get_serving_url_watcher.call_count, 2)
+            # Re-save the object; the call_count should be unchanged
+            obj.save()
+            self.assertEqual(get_serving_url_watcher.call_count, 2)
+            # Modify the files, the call_count should increase again
+            obj.file_field = ContentFile('new file content', name='my_file')
+            obj.image_field = ContentFile('new image content', name='my_file')
+            obj.save()
+            self.assertEqual(get_serving_url_watcher.call_count, 4)
 
 
 class ModelWithComputedCollationField(models.Model):

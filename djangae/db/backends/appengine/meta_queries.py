@@ -301,7 +301,6 @@ class QueryByKeys(object):
             2. Multikey projection, async MultiQueries with ancestors chained
             3. Full select, datastore get
         """
-
         opts = self.queries[0]._Query__query_options
         key_count = len(self.queries_by_key)
 

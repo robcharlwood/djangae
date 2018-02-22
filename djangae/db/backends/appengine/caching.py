@@ -210,7 +210,7 @@ def _get_entity_from_memcache(cache_key):
 def _get_entity_from_memcache_by_key(key):
     # We build the cache key for the ID of the instance
     cache_key, _ = _get_cache_key_and_model_from_datastore_key(key)
-    namespace = key.namespace() or None
+    namespace = key.namespace() or ''
     return _get_entity_from_memcache(_apply_namespace(cache_key, namespace))
 
 
@@ -289,7 +289,7 @@ def get_from_cache_by_key(key):
         return None
 
     context = get_context()
-    namespace = key.namespace() or None
+    namespace = key.namespace() or ''
     ret = None
     if context.context_enabled:
         # It's safe to hit the context cache, because a new one was pushed on the stack at the start of the transaction

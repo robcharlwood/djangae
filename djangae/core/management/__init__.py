@@ -13,6 +13,7 @@ DEFAULTS = {
     "api_port": 8002,
     "automatic_restart": "True",
     "allow_skipped_files": "True",
+    "app_id": "managepy",
 }
 
 
@@ -34,7 +35,10 @@ def execute_from_command_line(argv=None, **sandbox_overrides):
     argv = ['manage.py'] + other_args + stashed_args
 
     overrides = DEFAULTS.copy()
-    overrides.update(sandbox_overrides, app_id=djangae_namespace.app_id)
+    overrides.update(sandbox_overrides)
+
+    if djangae_namespace.app_id:
+        overrides.update(app_id=djangae_namespace.app_id)
 
     return _execute_from_command_line(djangae_namespace.sandbox, argv, parser=djangae_parser, **overrides)
 
